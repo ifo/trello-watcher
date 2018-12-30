@@ -16,25 +16,6 @@ var logger *log.Logger
 // The capture names exist only as documentation. They are otherwise unused.
 var regex = regexp.MustCompile(".*/(?P<objType>.*)/(?P<objID>.*)/?$")
 
-type ListChange struct {
-	Model struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
-	} `json:"model"`
-	Action struct {
-		Data struct {
-			Card struct {
-				ID     string `json:"id"`
-				IDList string `json:"idList"`
-				Name   string `json:"name"`
-			} `json:"card"`
-			Old struct {
-				IDList string `json:"idList"`
-			} `json:"old"`
-		} `json:"data"`
-	} `json:"action"`
-}
-
 func main() {
 	logTmp, err := ioutil.TempFile(logLoc, "log_*.log")
 	if err != nil {
@@ -106,4 +87,23 @@ func index(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+type ListChange struct {
+	Model struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"model"`
+	Action struct {
+		Data struct {
+			Card struct {
+				ID     string `json:"id"`
+				IDList string `json:"idList"`
+				Name   string `json:"name"`
+			} `json:"card"`
+			Old struct {
+				IDList string `json:"idList"`
+			} `json:"old"`
+		} `json:"data"`
+	} `json:"action"`
 }
