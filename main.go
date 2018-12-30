@@ -60,7 +60,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 	objID := captures[l-1]
 
 	// For now write a file containing the response received for the item.
-	f, err := ioutil.TempFile(LOG_LOC, objType+"_"+objID)
+	f, err := ioutil.TempFile(LOG_LOC, objType+"_"+objID+"_")
 	if err != nil {
 		logger.Println(err)
 		http.Error(w, "", http.StatusInternalServerError)
