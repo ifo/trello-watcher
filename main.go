@@ -35,8 +35,14 @@ func index(w http.ResponseWriter, r *http.Request) {
 		// Write a file letting us know this route was activated.
 		safePath := strings.Replace(r.URL.Path, "/", "_", -1)
 		defer ioutil.WriteFile(LOG_LOC+"activated-"+safePath, nil, 0644)
-		w.WriteHeader(http.StatusNoContent)
+		// A 200 is required to succeed Trello's webhook check.
+		w.WriteHeader(http.StatusOK)
 		return
+	}
+
+	if r.Method != http.MethodPost {
+		logger.Printf("Received an unsupported method: %s\n", r.Method)
+		http.Error(w, "", http.StatusMethodNotAllowed)
 	}
 
 	// The last element in the path is the object id.
