@@ -1,3 +1,25 @@
+// trello watcher is a very opinionated helper system using the trello api via trel.
+//
+// Currently, the board looks like this:
+// ----------------------------------------------
+// | Projects | Active | To Do | Done | Storage |
+// ----------------------------------------------
+//
+// Projects contains all potential or past project ideas.
+// Active contains the currently active project or projects.
+// To Do and Done are for subtasks related to the Active project(s).
+// Storage is for keeping information stored but out of the way.
+//
+// Startup involves:
+// - Fetching all trel.List resources.
+// - Ensuring there is a webhook on the Active list.
+// - Ensuring all cards on the active board have an active webhook.
+//
+// Watching involves:
+// - Finding and moving cards when checklist items are completed.
+// - Completing checklist items when cards are moved.
+// - Storing and retrieving cards when projects are made active or inactive.
+// - Adding webhooks to cards moved to the active board.
 package main
 
 import (
