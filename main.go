@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-const LOG_LOC = "./log/"
+const logLoc = "./log/"
 
 var logger *log.Logger
 
@@ -36,7 +36,7 @@ type ListChange struct {
 }
 
 func main() {
-	logTmp, err := ioutil.TempFile(LOG_LOC, "log_*.log")
+	logTmp, err := ioutil.TempFile(logLoc, "log_*.log")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -53,7 +53,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodHead {
 		// Write a file letting us know this route was activated.
 		safePath := strings.Replace(r.URL.Path, "/", "_", -1)
-		defer ioutil.WriteFile(LOG_LOC+"activated-"+safePath, nil, 0644)
+		defer ioutil.WriteFile(logLoc+"activated-"+safePath, nil, 0644)
 		// A 200 is required to succeed Trello's webhook check.
 		w.WriteHeader(http.StatusOK)
 		return
@@ -79,13 +79,14 @@ func index(w http.ResponseWriter, r *http.Request) {
 	objID := captures[l-1]
 
 	// For now write a file containing the response received for the item.
-	f, err := ioutil.TempFile(LOG_LOC, objType+"_"+objID+"_")
+	f, err := ioutil.TempFile(logLoc, objType+"_"+objID+"_")
 	if err != nil {
 		logger.Println(err)
 		http.Error(w, "", http.StatusInternalServerError)
 		return
 	}
 
+	// Record response.
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		logger.Println(err)
