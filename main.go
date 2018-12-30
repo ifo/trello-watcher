@@ -26,7 +26,8 @@ func main() {
 	port := os.Getenv("PORT")
 
 	http.HandleFunc("/", index)
-	log.Fatalln(http.ListenAndServe(":"+port, nil))
+	logger.Println("Starting server...")
+	logger.Fatalln(http.ListenAndServe(":"+port, nil))
 }
 
 func index(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +44,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 	captures := regex.FindStringSubmatch(r.URL.Path)
 	// We always expect at least 3 elements, the full match and at least 2 submatches.
 	if len(captures) < 3 {
-		log.Printf("Fewer captures than expected. Found: %v, from path: %s\n", captures, r.URL.Path)
+		logger.Printf("Fewer captures than expected. Found: %v, from path: %s\n", captures, r.URL.Path)
 		http.NotFound(w, r)
 		return
 	}
@@ -56,25 +57,25 @@ func index(w http.ResponseWriter, r *http.Request) {
 	f, err := ioutil.TempFile(LOG_LOC, objType+"_"+objID)
 	if err != nil {
 		logger.Println(err)
-		http.Error(w, "", 500)
+		http.Error(w, "", http.StatusInternalServerError)
 		return
 	}
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		logger.Println(err)
-		http.Error(w, "", 500)
+		http.Error(w, "", http.StatusInternalServerError)
 		return
 	}
 	if _, err := f.Write(body); err != nil {
 		logger.Println(err)
 		f.Close()
-		http.Error(w, "", 500)
+		http.Error(w, "", http.StatusInternalServerError)
 		return
 	}
 	if err := f.Close(); err != nil {
 		logger.Println(err)
-		http.Error(w, "", 500)
+		http.Error(w, "", http.StatusInternalServerError)
 		return
 	}
 
