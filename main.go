@@ -53,6 +53,7 @@ type Board struct {
 	ToDo     trel.List
 	Done     trel.List
 	Storage  trel.List
+	Webhooks trel.Webhooks
 }
 
 func init() {
@@ -110,6 +111,11 @@ func init() {
 		lm[name] = l
 	}
 
+	webhooks, err := trelClient.Webhooks()
+	if err != nil {
+		logger.Fatalln("Unable to retrieve webhooks")
+	}
+
 	// Setup the board global.
 	board = Board{
 		Projects: lm["Projects"],
@@ -117,12 +123,33 @@ func init() {
 		ToDo:     lm["To Do"],
 		Done:     lm["Done"],
 		Storage:  lm["Storage"],
+		Webhooks: webhooks,
 	}
 
-	// TODO:
-	// - Get all webhooks
-	// - Ensure Active has a webhook
-	// - Ensure all cards on Active have a webhook
+	if HasWebhook(board.Active.ID, board.Webhooks) {
+		callbackURL := MakeCallbackURL("https", host, "list", board.Active.ID)
+		hook, err := trelClient.NewWebhook("Active list: "+board.Active.ID, callbackURL, board.Active.ID)
+		if err != nil {
+			logger.Fatalln("Unable to create Webhook for Active list")
+		}
+		board.Webhooks = append(board.Webhooks, hook)
+	}
+
+	cards, err := board.Active.Cards()
+	if err != nil {
+		logger.Fatalln("Unable to get Active list cards")
+	}
+
+	for _, card := range cards {
+		if !HasWebhook(card.ID, board.Webhooks) {
+			callbackURL := MakeCallbackURL("https", host, "card", card.ID)
+			hook, err := trelClient.NewWebhook("Active list card: "+card.ID, callbackURL, card.ID)
+			if err != nil {
+				logger.Fatalf("Unable to create Webhook for Active list card: %s\n", card.ID)
+			}
+			board.Webhooks = append(board.Webhooks, hook)
+		}
+	}
 }
 
 func main() {
@@ -207,6 +234,15 @@ type ListChange struct {
 			} `json:"old"`
 		} `json:"data"`
 	} `json:"action"`
+}
+
+func HasWebhook(id string, ws trel.Webhooks) bool {
+	for _, w := range ws {
+		if w.IDModel == id {
+			return true
+		}
+	}
+	return false
 }
 
 func MakeCallbackURL(scheme, host, typ, id string) string {
