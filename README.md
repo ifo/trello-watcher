@@ -3,6 +3,7 @@
 A very opinionated helper system using the trello api via trel.
 
 It requires a board that looks like this:
+
 | Projects  | Active | To Do | Done  | Storage    |
 | --------- | ------ | ----- | ----- | ---------- |
 | Project 1 | Work   | Do it | Check | Everything |
