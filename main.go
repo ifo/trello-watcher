@@ -24,9 +24,11 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -205,4 +207,13 @@ type ListChange struct {
 			} `json:"old"`
 		} `json:"data"`
 	} `json:"action"`
+}
+
+func MakeCallbackURL(scheme, host, typ, id string) string {
+	u := url.URL{
+		Scheme: scheme,
+		Host:   host,
+		Path:   fmt.Sprintf("/%s/%s", typ, id),
+	}
+	return u.String()
 }
