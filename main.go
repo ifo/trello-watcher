@@ -41,6 +41,7 @@ var regex = regexp.MustCompile(".*/(?P<objType>.*)/(?P<objID>.*)/?$")
 
 var logger *log.Logger
 var trelClient *trel.Client
+var host = os.Getenv("HOST")
 var port = os.Getenv("PORT")
 var board Board
 
@@ -66,6 +67,7 @@ func init() {
 	pBoardID := flag.String("board", "", "trello board id")
 	pKey := flag.String("key", "", "trello api key")
 	pToken := flag.String("token", "", "trello api token")
+	pHost := flag.String("host", "", "server host name (web address)")
 	pPort := flag.String("port", "0", "server port")
 	flag.Parse()
 
@@ -79,11 +81,14 @@ func init() {
 	if token == "" {
 		token = os.Getenv("TRELLO_TOKEN")
 	}
+	if *pHost != "" {
+		host = *pHost
+	}
 	if *pPort != "0" {
 		port = *pPort
 	}
-	if boardID == "" || key == "" || token == "" || port == "0" {
-		logger.Fatalln("The Board ID, Trello Key and Token, and Port are all required")
+	if boardID == "" || key == "" || token == "" || host == "" || port == "0" {
+		logger.Fatalln("The Board ID, Trello Key and Token, Host, and Port are all required")
 	}
 
 	// We can leave the username empty because we already know the board id.
