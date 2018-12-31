@@ -23,30 +23,102 @@
 package main
 
 import (
+	"flag"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/ifo/trel"
 )
 
 const logLoc = "./log/"
 
-var logger *log.Logger
-
 // The capture names exist only as documentation. They are otherwise unused.
 var regex = regexp.MustCompile(".*/(?P<objType>.*)/(?P<objID>.*)/?$")
 
-func main() {
+var logger *log.Logger
+var trelClient *trel.Client
+var port = os.Getenv("PORT")
+var board Board
+
+type Board struct {
+	Projects trel.List
+	Active   trel.List
+	ToDo     trel.List
+	Done     trel.List
+	Storage  trel.List
+}
+
+func init() {
+	// Setup logging.
 	logTmp, err := ioutil.TempFile(logLoc, "log_*.log")
 	if err != nil {
 		log.Fatal(err)
 	}
 	logger = log.New(logTmp, "", log.Ldate|log.Ltime|log.Lshortfile)
 
-	port := os.Getenv("PORT")
+	// Fetch the trello board lists.
+	var boardID, key, token string
 
+	pBoardID := flag.String("board", "", "trello board id")
+	pKey := flag.String("key", "", "trello api key")
+	pToken := flag.String("token", "", "trello api token")
+	pPort := flag.String("port", "0", "server port")
+	flag.Parse()
+
+	boardID, key, token = *pBoardID, *pKey, *pToken
+	if boardID == "" {
+		boardID = os.Getenv("TRELLO_BOARD_ID")
+	}
+	if key == "" {
+		key = os.Getenv("TRELLO_KEY")
+	}
+	if token == "" {
+		token = os.Getenv("TRELLO_TOKEN")
+	}
+	if *pPort != "0" {
+		port = *pPort
+	}
+	if boardID == "" || key == "" || token == "" || port == "0" {
+		logger.Fatalln("The Board ID, Trello Key and Token, and Port are all required")
+	}
+
+	// We can leave the username empty because we already know the board id.
+	trelClient = trel.New("", key, token)
+	lists, err := trelClient.Board(boardID)
+	if err != nil {
+		logger.Fatalln("Failed to retrieve board lists")
+	}
+
+	listNames := []string{"Projects", "Active", "To Do", "Done", "Storage"}
+	lm := map[string]trel.List{}
+	for _, name := range listNames {
+		l, err := lists.FindList(name)
+		if err != nil {
+			logger.Fatalf("The board needs a list named %q\n", name)
+		}
+		lm[name] = l
+	}
+
+	// Setup the board global.
+	board = Board{
+		Projects: lm["Projects"],
+		Active:   lm["Active"],
+		ToDo:     lm["To Do"],
+		Done:     lm["Done"],
+		Storage:  lm["Storage"],
+	}
+
+	// TODO:
+	// - Get all webhooks
+	// - Ensure Active has a webhook
+	// - Ensure all cards on Active have a webhook
+}
+
+func main() {
 	http.HandleFunc("/", index)
 	logger.Println("Starting server...")
 	logger.Fatalln(http.ListenAndServe(":"+port, nil))
