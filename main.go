@@ -171,6 +171,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		logger.Printf("Received an unsupported method: %s\n", r.Method)
 		http.Error(w, "", http.StatusMethodNotAllowed)
+		return
 	}
 
 	// The last element in the path is the object id.
