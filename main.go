@@ -63,6 +63,7 @@ func init() {
 		log.Fatal(err)
 	}
 	logger = log.New(logTmp, "", log.Ldate|log.Ltime|log.Lshortfile)
+	fmt.Printf("logging to file: %s\n", logTmp.Name())
 
 	// Fetch the trello board lists.
 	var boardID, key, token string
@@ -98,6 +99,7 @@ func init() {
 	trelClient = trel.New("", key, token)
 	lists, err := trelClient.Board(boardID)
 	if err != nil {
+		logger.Println(err)
 		logger.Fatalln("Failed to retrieve board lists")
 	}
 
@@ -106,6 +108,7 @@ func init() {
 	for _, name := range listNames {
 		l, err := lists.FindList(name)
 		if err != nil {
+			logger.Println(err)
 			logger.Fatalf("The board needs a list named %q\n", name)
 		}
 		lm[name] = l
@@ -113,6 +116,7 @@ func init() {
 
 	webhooks, err := trelClient.Webhooks()
 	if err != nil {
+		logger.Println(err)
 		logger.Fatalln("Unable to retrieve webhooks")
 	}
 
@@ -130,6 +134,7 @@ func init() {
 		callbackURL := MakeCallbackURL("https", host, "list", board.Active.ID)
 		hook, err := trelClient.NewWebhook("Active list: "+board.Active.ID, callbackURL, board.Active.ID)
 		if err != nil {
+			logger.Println(err)
 			logger.Fatalln("Unable to create Webhook for Active list")
 		}
 		board.Webhooks = append(board.Webhooks, hook)
@@ -137,6 +142,7 @@ func init() {
 
 	cards, err := board.Active.Cards()
 	if err != nil {
+		logger.Println(err)
 		logger.Fatalln("Unable to get Active list cards")
 	}
 
@@ -145,6 +151,7 @@ func init() {
 			callbackURL := MakeCallbackURL("https", host, "card", card.ID)
 			hook, err := trelClient.NewWebhook("Active list card: "+card.ID, callbackURL, card.ID)
 			if err != nil {
+				logger.Println(err)
 				logger.Fatalf("Unable to create Webhook for Active list card: %s\n", card.ID)
 			}
 			board.Webhooks = append(board.Webhooks, hook)
