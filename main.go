@@ -32,6 +32,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/ifo/trel"
 )
@@ -129,37 +130,15 @@ func init() {
 		Storage:  lm["Storage"],
 		Webhooks: webhooks,
 	}
-
-	if HasWebhook(board.Active.ID, board.Webhooks) {
-		callbackURL := MakeCallbackURL("https", host, "list", board.Active.ID)
-		hook, err := trelClient.NewWebhook("Active list: "+board.Active.ID, callbackURL, board.Active.ID)
-		if err != nil {
-			logger.Println(err)
-			logger.Fatalln("Unable to create Webhook for Active list")
-		}
-		board.Webhooks = append(board.Webhooks, hook)
-	}
-
-	cards, err := board.Active.Cards()
-	if err != nil {
-		logger.Println(err)
-		logger.Fatalln("Unable to get Active list cards")
-	}
-
-	for _, card := range cards {
-		if !HasWebhook(card.ID, board.Webhooks) {
-			callbackURL := MakeCallbackURL("https", host, "card", card.ID)
-			hook, err := trelClient.NewWebhook("Active list card: "+card.ID, callbackURL, card.ID)
-			if err != nil {
-				logger.Println(err)
-				logger.Fatalf("Unable to create Webhook for Active list card: %s\n", card.ID)
-			}
-			board.Webhooks = append(board.Webhooks, hook)
-		}
-	}
 }
 
 func main() {
+	// Give the server a second to start before creating webhooks.
+	go func() {
+		time.Sleep(1 * time.Second)
+		SetupInitialWebhooks()
+	}()
+
 	http.HandleFunc("/", index)
 	logger.Println("Starting server...")
 	logger.Fatalln(http.ListenAndServe(":"+port, nil))
@@ -254,6 +233,36 @@ type ListChange struct {
 			} `json:"old"`
 		} `json:"data"`
 	} `json:"action"`
+}
+
+func SetupInitialWebhooks() {
+	if !HasWebhook(board.Active.ID, board.Webhooks) {
+		callbackURL := MakeCallbackURL("https", host, "list", board.Active.ID)
+		hook, err := trelClient.NewWebhook("Active list - "+board.Active.ID, callbackURL, board.Active.ID)
+		if err != nil {
+			logger.Println(err)
+			logger.Fatalln("Unable to create Webhook for Active list")
+		}
+		board.Webhooks = append(board.Webhooks, hook)
+	}
+
+	cards, err := board.Active.Cards()
+	if err != nil {
+		logger.Println(err)
+		logger.Fatalln("Unable to get Active list cards")
+	}
+
+	for _, card := range cards {
+		if !HasWebhook(card.ID, board.Webhooks) {
+			callbackURL := MakeCallbackURL("https", host, "card", card.ID)
+			hook, err := trelClient.NewWebhook("Active list card: "+card.ID, callbackURL, card.ID)
+			if err != nil {
+				logger.Println(err)
+				logger.Fatalf("Unable to create Webhook for Active list card: %s\n", card.ID)
+			}
+			board.Webhooks = append(board.Webhooks, hook)
+		}
+	}
 }
 
 func HasWebhook(id string, ws trel.Webhooks) bool {
