@@ -184,16 +184,28 @@ func index(w http.ResponseWriter, r *http.Request) {
 	// The last element in the path is the object id.
 	// The element before is the object type.
 	captures := regex.FindStringSubmatch(r.URL.Path)
-	// We always expect at least 3 elements, the full match and at least 2 submatches.
-	if len(captures) < 3 {
-		logger.Printf("Fewer captures than expected. Found: %v, from path: %s\n", captures, r.URL.Path)
+	// We always expect 3 elements, the full match and 2 submatches.
+	if len(captures) != 3 {
+		logger.Printf("Too many or too few captures. Found: %v, from path: %s\n", captures, r.URL.Path)
 		http.NotFound(w, r)
 		return
 	}
 
-	l := len(captures)
-	objType := captures[l-2]
-	objID := captures[l-1]
+	isValidCapture := false
+	for _, t := range []string{"list", "card"} {
+		if captures[1] == t {
+			isValidCapture = true
+		}
+	}
+
+	if !isValidCapture {
+		logger.Printf("Invalid captures: %s\n", r.URL.Path)
+		http.NotFound(w, r)
+		return
+	}
+
+	objType := captures[1]
+	objID := captures[2]
 
 	// For now write a file containing the response received for the item.
 	f, err := ioutil.TempFile(logLoc, objType+"_"+objID+"_")
