@@ -222,6 +222,7 @@ type ListChange struct {
 		Name string `json:"name"`
 	} `json:"model"`
 	Action struct {
+		Type string `json:"type"` // "updateCard"
 		Data struct {
 			Card struct {
 				ID     string `json:"id"`
@@ -231,6 +232,31 @@ type ListChange struct {
 			Old struct {
 				IDList string `json:"idList"`
 			} `json:"old"`
+		} `json:"data"`
+	} `json:"action"`
+}
+
+type CheckItemChange struct {
+	Model struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"model"`
+	Action struct {
+		Type string `json:"type"` // "updateCheckItemStateOnCard"
+		Data struct {
+			Card struct {
+				ID   string `json:"id"`
+				Name string `json:"name"`
+			} `json:"card"`
+			CheckItem struct {
+				ID    string `json:"id"`
+				Name  string `json:"name"`
+				State string `json:"state"`
+			} `json:"checkItem"`
+			Checklist struct {
+				ID   string `json:"id"`
+				Name string `json:"name"`
+			} `json:"checklist"`
 		} `json:"data"`
 	} `json:"action"`
 }
