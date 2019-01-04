@@ -263,8 +263,7 @@ type CheckItemChange struct {
 
 func SetupInitialWebhooks() {
 	if !HasWebhook(board.Active.ID, board.Webhooks) {
-		callbackURL := MakeCallbackURL("https", host, "list", board.Active.ID)
-		hook, err := trelClient.NewWebhook("Active list - "+board.Active.ID, callbackURL, board.Active.ID)
+		hook, err := DefaultWebhook(trelClient, "list", board.Active.ID)
 		if err != nil {
 			logger.Println(err)
 			logger.Fatalln("Unable to create Webhook for Active list")
@@ -280,8 +279,7 @@ func SetupInitialWebhooks() {
 
 	for _, card := range cards {
 		if !HasWebhook(card.ID, board.Webhooks) {
-			callbackURL := MakeCallbackURL("https", host, "card", card.ID)
-			hook, err := trelClient.NewWebhook("Active list card: "+card.ID, callbackURL, card.ID)
+			hook, err := DefaultWebhook(trelClient, "card", card.ID)
 			if err != nil {
 				logger.Println(err)
 				logger.Fatalf("Unable to create Webhook for Active list card: %s\n", card.ID)
@@ -298,6 +296,15 @@ func HasWebhook(id string, ws trel.Webhooks) bool {
 		}
 	}
 	return false
+}
+
+func DefaultWebhook(c *trel.Client, typ, id string) (trel.Webhook, error) {
+	cb := DefaultCallbackURL(typ, id)
+	return c.NewWebhook(fmt.Sprintf("%s: %s", typ, id), cb, id)
+}
+
+func DefaultCallbackURL(typ, id string) string {
+	return MakeCallbackURL("https", host, typ, id)
 }
 
 func MakeCallbackURL(scheme, host, typ, id string) string {
