@@ -216,6 +216,55 @@ func index(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func SetupActiveProject(card trel.Card) error {
+	if !HasWebhook(card.ID, board.Webhooks) {
+		wh, err := DefaultWebhook(trelClient, "card", card.ID)
+		if err != nil {
+			return err
+		}
+		board.Webhooks = append(board.Webhooks, wh)
+	}
+
+	checklists, err := card.Checklists()
+	if err != nil {
+		return err
+	}
+
+	cards, err := board.Storage.Cards()
+	if err != nil {
+		return err
+	}
+
+	for _, cl := range checklists {
+		for _, ci := range cl.CheckItems {
+			// Either find the card and move it, or make one.
+			c, err := cards.FindCard(ci.Name)
+			if _, ok := err.(trel.NotFoundError); ok {
+				// Make the card.
+				list := board.ToDo
+				if ci.State == "complete" {
+					list = board.Done
+				}
+				_, cardErr := list.NewCard(ci.Name, "", "")
+				if cardErr != nil {
+					return err
+				}
+			} else {
+				// Move the card.
+				list := board.ToDo
+				if ci.State == "complete" {
+					list = board.Done
+				}
+				err := c.Move(list.ID)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
 type ListChange struct {
 	Model struct {
 		ID   string `json:"id"`
