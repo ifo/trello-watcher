@@ -137,6 +137,13 @@ func main() {
 	go func() {
 		time.Sleep(1 * time.Second)
 		SetupInitialWebhooks()
+		cards, err := board.Active.Cards()
+		if err != nil {
+			logger.Fatalf("Unable to fetch active cards: %s\n", err)
+		}
+		for _, card := range cards {
+			SetupActiveProjectCard(card)
+		}
 	}()
 
 	http.HandleFunc("/", index)
@@ -216,7 +223,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func SetupActiveProject(card trel.Card) error {
+func SetupActiveProjectCard(card trel.Card) error {
 	if !HasWebhook(card.ID, board.Webhooks) {
 		wh, err := DefaultWebhook(trelClient, "card", card.ID)
 		if err != nil {
