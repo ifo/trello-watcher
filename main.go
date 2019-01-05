@@ -23,6 +23,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -194,8 +195,28 @@ func index(w http.ResponseWriter, r *http.Request) {
 	objType := captures[1]
 	objID := captures[2]
 
-	// For now write a file containing the response received for the item.
-	err := RecordResponse(objType, objID, r.Body)
+	// Attempt to parse the body.
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		logger.Println(err)
+		http.Error(w, "", http.StatusInternalServerError)
+		return
+	}
+
+	var listChange ListChange
+	if err := json.Unmarshal(body, &listChange); err != nil {
+		err = listChange.Handle()
+		if err != nil {
+			logger.Println(err)
+			http.Error(w, "", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	// We didn't understand the body, so write a file containing the response received for the item.
+	err = RecordResponse(objType, objID, r.Body)
 	if err != nil {
 		logger.Println(err)
 		http.Error(w, "", http.StatusInternalServerError)
@@ -203,6 +224,56 @@ func index(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+type ListChange struct {
+	Model struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"model"`
+	Action struct {
+		Type string `json:"type"` // "updateCard"
+		Data struct {
+			ListAfter struct {
+				ID   string `json:ID`
+				Name string `json:"name"`
+			} `json:"listAfter"`
+			ListBefore struct {
+				ID   string `json:ID`
+				Name string `json:"name"`
+			} `json:"listBefore"`
+			Card struct {
+				ID     string `json:"id"`
+				IDList string `json:"idList"`
+				Name   string `json:"name"`
+			} `json:"card"`
+			Old struct {
+				IDList string `json:"idList"`
+			} `json:"old"`
+		} `json:"data"`
+	} `json:"action"`
+}
+
+func (lc ListChange) Handle() error {
+	card, err := trelClient.Card(lc.Action.Data.Card.ID)
+	if err != nil {
+		return err
+	}
+
+	afterName := lc.Action.Data.ListAfter.Name
+	beforeName := lc.Action.Data.ListBefore.Name
+
+	// Card moved to Active from Projects, so set it up.
+	if afterName == board.Active.Name && beforeName == board.Projects.Name {
+		return SetupActiveProjectCard(card)
+	}
+	// The card moved to Projects from Active, so store it.
+	if afterName == board.Projects.Name && beforeName == board.Active.Name {
+		return StoreInactiveProjectCard(card)
+	}
+
+	// The card wasn't moved to or from Projects or Active, so don't do anything.
+	return nil
 }
 
 func RecordResponse(objType, objID string, r io.Reader) error {
@@ -324,26 +395,6 @@ func StoreInactiveProjectCard(card trel.Card) error {
 		return nil
 	}
 	return webhook.Deactivate()
-}
-
-type ListChange struct {
-	Model struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
-	} `json:"model"`
-	Action struct {
-		Type string `json:"type"` // "updateCard"
-		Data struct {
-			Card struct {
-				ID     string `json:"id"`
-				IDList string `json:"idList"`
-				Name   string `json:"name"`
-			} `json:"card"`
-			Old struct {
-				IDList string `json:"idList"`
-			} `json:"old"`
-		} `json:"data"`
-	} `json:"action"`
 }
 
 type CheckItemChange struct {
