@@ -233,6 +233,15 @@ func SetupActiveProjectCard(card trel.Card) error {
 		board.Webhooks = append(board.Webhooks, wh)
 	}
 
+	// Ensure webhook is active.
+	wh, err := board.Webhooks.Find(card.ID)
+	if err != nil {
+		return err
+	}
+	if err := wh.Activate(); err != nil {
+		return err
+	}
+
 	checklists, err := card.Checklists()
 	if err != nil {
 		return err
