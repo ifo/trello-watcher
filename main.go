@@ -245,7 +245,7 @@ func SetupActiveProjectCard(card trel.Card) error {
 	for _, cl := range checklists {
 		for _, ci := range cl.CheckItems {
 			// Either find the card and move it, or make one.
-			c, err := cards.FindCard(ci.Name)
+			c, err := cards.Find(ci.Name)
 			if _, ok := err.(trel.NotFoundError); ok {
 				// Make the card.
 				list := board.ToDo
@@ -292,7 +292,7 @@ func StoreInactiveProjectCard(card trel.Card) error {
 
 	for _, cl := range checklists {
 		for _, ci := range cl.CheckItems {
-			c, err := cards.FindCard(ci.Name)
+			c, err := cards.Find(ci.Name)
 			if _, ok := err.(trel.NotFoundError); ok {
 				// Ignore cards that are missing.
 				// They will be created later if this project becomes active again.
@@ -307,8 +307,9 @@ func StoreInactiveProjectCard(card trel.Card) error {
 	}
 
 	// Deactivate this card's webhook if it exists.
-	webhook := FindWebhook(card.ID, board.Webhooks)
-	if webhook.ID == "" {
+	webhook, err := board.Webhooks.Find(card.ID)
+	if err != nil {
+		logger.Println(err)
 		// Ignore webhooks that are missing.
 		return nil
 	}
@@ -389,20 +390,11 @@ func SetupInitialWebhooks() {
 }
 
 func HasWebhook(id string, ws trel.Webhooks) bool {
-	wh := FindWebhook(id, ws)
-	if wh.ID != "" {
-		return true
+	_, err := ws.Find(id)
+	if err != nil {
+		return false
 	}
-	return false
-}
-
-func FindWebhook(id string, ws trel.Webhooks) trel.Webhook {
-	for _, w := range ws {
-		if w.IDModel == id {
-			return w
-		}
-	}
-	return trel.Webhook{}
+	return true
 }
 
 func DefaultWebhook(c *trel.Client, typ, id string) (trel.Webhook, error) {
