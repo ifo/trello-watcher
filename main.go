@@ -25,6 +25,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -194,33 +195,33 @@ func index(w http.ResponseWriter, r *http.Request) {
 	objID := captures[2]
 
 	// For now write a file containing the response received for the item.
-	f, err := ioutil.TempFile(logLoc, objType+"_"+objID+"_")
+	err := RecordResponse(objType, objID, r.Body)
 	if err != nil {
-		logger.Println(err)
-		http.Error(w, "", http.StatusInternalServerError)
-		return
-	}
-
-	// Record response.
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		logger.Println(err)
-		http.Error(w, "", http.StatusInternalServerError)
-		return
-	}
-	if _, err := f.Write(body); err != nil {
-		logger.Println(err)
-		f.Close()
-		http.Error(w, "", http.StatusInternalServerError)
-		return
-	}
-	if err := f.Close(); err != nil {
 		logger.Println(err)
 		http.Error(w, "", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func RecordResponse(objType, objID string, r io.Reader) error {
+	// For now write a file containing the response received for the item.
+	f, err := ioutil.TempFile(logLoc, objType+"_"+objID+"_")
+	if err != nil {
+		return err
+	}
+
+	// Record response.
+	body, err := ioutil.ReadAll(r)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(body); err != nil {
+		defer f.Close()
+		return err
+	}
+	return f.Close()
 }
 
 func SetupActiveProjectCard(card trel.Card) error {
