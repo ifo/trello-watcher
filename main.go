@@ -272,6 +272,49 @@ func SetupActiveProjectCard(card trel.Card) error {
 	return nil
 }
 
+func StoreInactiveProjectCard(card trel.Card) error {
+	// Move all cards to storage
+	checklists, err := card.Checklists()
+	if err != nil {
+		return err
+	}
+
+	// Collect all cards on the To Do and Done boards.
+	todoCards, err := board.ToDo.Cards()
+	if err != nil {
+		return err
+	}
+	doneCards, err := board.Done.Cards()
+	if err != nil {
+		return err
+	}
+	cards := append(todoCards, doneCards...)
+
+	for _, cl := range checklists {
+		for _, ci := range cl.CheckItems {
+			c, err := cards.FindCard(ci.Name)
+			if _, ok := err.(trel.NotFoundError); ok {
+				// Ignore cards that are missing.
+				// They will be created later if this project becomes active again.
+				continue
+			}
+			// Move the card.
+			err = c.Move(board.Storage.ID)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	// Deactivate this card's webhook if it exists.
+	webhook := FindWebhook(card.ID, board.Webhooks)
+	if webhook.ID == "" {
+		// Ignore webhooks that are missing.
+		return nil
+	}
+	return webhook.Deactivate()
+}
+
 type ListChange struct {
 	Model struct {
 		ID   string `json:"id"`
