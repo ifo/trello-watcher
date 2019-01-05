@@ -214,6 +214,17 @@ func index(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
+	var checkItemChange CheckItemChange
+	if err := json.Unmarshal(body, &checkItemChange); err != nil {
+		err = checkItemChange.Handle()
+		if err != nil {
+			logger.Println(err)
+			http.Error(w, "", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
 
 	// We didn't understand the body, so write a file containing the response received for the item.
 	err = RecordResponse(objType, objID, r.Body)
@@ -273,6 +284,54 @@ func (lc ListChange) Handle() error {
 	}
 
 	// The card wasn't moved to or from Projects or Active, so don't do anything.
+	return nil
+}
+
+type CheckItemChange struct {
+	Model struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	} `json:"model"`
+	Action struct {
+		Type string `json:"type"` // "updateCheckItemStateOnCard"
+		Data struct {
+			Card struct {
+				ID   string `json:"id"`
+				Name string `json:"name"`
+			} `json:"card"`
+			CheckItem struct {
+				ID    string `json:"id"`
+				Name  string `json:"name"`
+				State string `json:"state"`
+			} `json:"checkItem"`
+			Checklist struct {
+				ID   string `json:"id"`
+				Name string `json:"name"`
+			} `json:"checklist"`
+		} `json:"data"`
+	} `json:"action"`
+}
+
+func (cic CheckItemChange) Handle() error {
+	cardID := cic.Action.Data.Card.ID
+	ciState := cic.Action.Data.CheckItem.State
+	// Check item checked; move to done
+	if ciState == "complete" {
+		card, err := board.ToDo.FindCard(cardID)
+		if err != nil {
+			return err
+		}
+		return card.Move(board.Done.ID)
+	}
+
+	// Check item unchecked; move to to do
+	if ciState == "incomplete" {
+		card, err := trelClient.Card(cardID)
+		if err != nil {
+			return err
+		}
+		return card.Move(board.ToDo.ID)
+	}
 	return nil
 }
 
@@ -395,31 +454,6 @@ func StoreInactiveProjectCard(card trel.Card) error {
 		return nil
 	}
 	return webhook.Deactivate()
-}
-
-type CheckItemChange struct {
-	Model struct {
-		ID   string `json:"id"`
-		Name string `json:"name"`
-	} `json:"model"`
-	Action struct {
-		Type string `json:"type"` // "updateCheckItemStateOnCard"
-		Data struct {
-			Card struct {
-				ID   string `json:"id"`
-				Name string `json:"name"`
-			} `json:"card"`
-			CheckItem struct {
-				ID    string `json:"id"`
-				Name  string `json:"name"`
-				State string `json:"state"`
-			} `json:"checkItem"`
-			Checklist struct {
-				ID   string `json:"id"`
-				Name string `json:"name"`
-			} `json:"checklist"`
-		} `json:"data"`
-	} `json:"action"`
 }
 
 func SetupInitialWebhooks() {
