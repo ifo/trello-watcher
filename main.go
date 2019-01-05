@@ -346,12 +346,20 @@ func SetupInitialWebhooks() {
 }
 
 func HasWebhook(id string, ws trel.Webhooks) bool {
-	for _, w := range ws {
-		if w.IDModel == id {
-			return true
-		}
+	wh := FindWebhook(id, ws)
+	if wh.ID != "" {
+		return true
 	}
 	return false
+}
+
+func FindWebhook(id string, ws trel.Webhooks) trel.Webhook {
+	for _, w := range ws {
+		if w.IDModel == id {
+			return w
+		}
+	}
+	return trel.Webhook{}
 }
 
 func DefaultWebhook(c *trel.Client, typ, id string) (trel.Webhook, error) {
