@@ -271,6 +271,7 @@ type ListChange struct {
 }
 
 func (lc ListChange) Handle() error {
+	logger.Printf("ListChange being handled for card %s\n", lc.Action.Data.Card.ID)
 	card, err := trelClient.Card(lc.Action.Data.Card.ID)
 	if err != nil {
 		return err
@@ -319,7 +320,9 @@ type CheckItemChange struct {
 
 func (cic CheckItemChange) Handle() error {
 	cardID := cic.Action.Data.Card.ID
+	ciName := cic.Action.Data.CheckItem.Name
 	ciState := cic.Action.Data.CheckItem.State
+	logger.Printf("CheckItemChange being handled for card %s, with name %s and state %s\n", cardID, ciName, ciState)
 	// Check item checked; move to done
 	if ciState == "complete" {
 		card, err := board.ToDo.FindCard(cardID)
