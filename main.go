@@ -204,7 +204,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var listChange ListChange
-	if err := json.Unmarshal(body, &listChange); err != nil {
+	if err := json.Unmarshal(body, &listChange); err == nil {
 		err = listChange.Handle()
 		if err != nil {
 			logger.Println(err)
@@ -213,9 +213,12 @@ func index(w http.ResponseWriter, r *http.Request) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 		return
+	} else {
+		logger.Println(err)
 	}
+
 	var checkItemChange CheckItemChange
-	if err := json.Unmarshal(body, &checkItemChange); err != nil {
+	if err := json.Unmarshal(body, &checkItemChange); err == nil {
 		err = checkItemChange.Handle()
 		if err != nil {
 			logger.Println(err)
@@ -224,6 +227,8 @@ func index(w http.ResponseWriter, r *http.Request) {
 		}
 		w.WriteHeader(http.StatusNoContent)
 		return
+	} else {
+		logger.Println(err)
 	}
 
 	// We didn't understand the body, so write a file containing the response received for the item.
