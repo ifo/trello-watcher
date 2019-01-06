@@ -382,11 +382,28 @@ func SetupActiveProjectCard(card trel.Card) error {
 		return err
 	}
 
+	todoCards, err := board.ToDo.Cards()
+	if err != nil {
+		return err
+	}
+
+	doneCards, err := board.Done.Cards()
+	if err != nil {
+		return err
+	}
+
 	for _, cl := range checklists {
 		for _, ci := range cl.CheckItems {
 			// Either find the card and move it, or make one.
 			c, err := cards.Find(ci.Name)
 			if _, ok := err.(trel.NotFoundError); ok {
+				// See if the card exists on another board, otherwise make it.
+				if _, err := todoCards.Find(ci.Name); err == nil {
+					return nil
+				}
+				if _, err := doneCards.Find(ci.Name); err == nil {
+					return nil
+				}
 				// Make the card.
 				list := board.ToDo
 				if ci.State == "complete" {
