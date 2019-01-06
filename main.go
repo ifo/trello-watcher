@@ -339,9 +339,12 @@ func (cic CheckItemChange) Handle() error {
 	if ciState == "incomplete" {
 		card, err := board.Done.FindCard(ciName)
 		if _, ok := err.(trel.NotFoundError); ok {
-			// Make the card, because we did not find it.
-			_, err = board.ToDo.NewCard(ciName, "", "")
-			return err
+			// Check to see if the card already exists, and if not, make it.
+			if _, err := board.ToDo.FindCard(ciName); err != nil {
+				// Make the card, because we did not find it anywhere.
+				_, err = board.ToDo.NewCard(ciName, "", "")
+				return err
+			}
 		}
 		return card.Move(board.ToDo.ID)
 	}
