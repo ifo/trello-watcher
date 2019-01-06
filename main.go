@@ -326,7 +326,7 @@ func (cic CheckItemChange) Handle() error {
 	ciName := cic.Action.Data.CheckItem.Name
 	ciState := cic.Action.Data.CheckItem.State
 	logger.Printf("CheckItemChange made with name %s and state %s\n", ciName, ciState)
-	// Check item checked; move to done
+	// A CheckItem was marked complete, so move the card to Done.
 	if ciState == "complete" {
 		card, err := board.ToDo.FindCard(ciName)
 		if err != nil {
@@ -335,10 +335,12 @@ func (cic CheckItemChange) Handle() error {
 		return card.Move(board.Done.ID)
 	}
 
-	// Check item unchecked; move to to do
+	// A CheckItem was created or marked incomplete, so move it to To Do or make one.
 	if ciState == "incomplete" {
 		card, err := board.Done.FindCard(ciName)
-		if err != nil {
+		if _, ok := err.(trel.NotFoundError); ok {
+			// Make the card, because we did not find it.
+			_, err = board.ToDo.NewCard(ciName, "", "")
 			return err
 		}
 		return card.Move(board.ToDo.ID)
