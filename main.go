@@ -149,6 +149,7 @@ func main() {
 	}()
 
 	http.HandleFunc("/", index)
+	http.HandleFunc("/webhooks", webhooks)
 	logger.Println("Starting server...")
 	logger.Fatalln(http.ListenAndServe(":"+port, nil))
 }
@@ -541,4 +542,15 @@ func MakeCallbackURL(scheme, host, typ, id string) string {
 		Path:   fmt.Sprintf("/%s/%s", typ, id),
 	}
 	return u.String()
+}
+
+func webhooks(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "", 404)
+		return
+	}
+
+	for _, wh := range board.Webhooks {
+		fmt.Fprintf(w, "%+v\n", wh)
+	}
 }
