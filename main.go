@@ -285,13 +285,36 @@ func (lc ListChange) Handle() error {
 	afterName := lc.Action.Data.ListAfter.Name
 	beforeName := lc.Action.Data.ListBefore.Name
 
-	// Card moved to Active from Projects, so set it up.
+	// Ignore all moves to and from storage
+	if beforeName == board.Storage.Name || afterName == board.Storage.Name {
+		return nil
+	}
+
+	// The card moved to Active from Projects, so set it up.
 	if afterName == board.Active.Name && beforeName == board.Projects.Name {
 		return SetupActiveProjectCard(card)
 	}
 	// The card moved to Projects from Active, so store it.
 	if afterName == board.Projects.Name && beforeName == board.Active.Name {
 		return StoreInactiveProjectCard(card)
+	}
+
+	// The card moved to Done from To Do, so complete the CheckItem.
+	if afterName == board.Done.Name && beforeName == board.ToDo.Name {
+		if ci, err := FindListCheckItem(board.Active, card.Name); err == nil {
+			return ci.Complete()
+		} else {
+			return err
+		}
+	}
+
+	// The card moved to To Do from Done, so mark the CheckItem incomplete.
+	if afterName == board.ToDo.Name && beforeName == board.Done.Name {
+		if ci, err := FindListCheckItem(board.Active, card.Name); err == nil {
+			return ci.Incomplete()
+		} else {
+			return err
+		}
 	}
 
 	// The card wasn't moved to or from Projects or Active, so don't do anything.
@@ -409,6 +432,11 @@ func SetupActiveProjectCard(card trel.Card) error {
 		return err
 	}
 
+	// Before we load up any cards in the Done list, we need to deactivate the webhook to prevent a bunch of card moving spam.
+	if wh, err := board.Webhooks.Find(board.Done.ID); err == nil {
+		wh.Deactivate()
+	}
+
 	for _, cl := range checklists {
 		for _, ci := range cl.CheckItems {
 			// Either find the card and move it, or make one.
@@ -443,6 +471,12 @@ func SetupActiveProjectCard(card trel.Card) error {
 			}
 		}
 	}
+
+	// Reactivate the Done webhook.
+	if wh, err := board.Webhooks.Find(board.Done.ID); err == nil {
+		wh.Activate()
+	}
+
 	return nil
 }
 
@@ -464,6 +498,11 @@ func StoreInactiveProjectCard(card trel.Card) error {
 	}
 	cards := append(todoCards, doneCards...)
 
+	// Before we remove any cards from the Done list, we need to deactivate the webhook to prevent a bunch of card moving spam.
+	if wh, err := board.Webhooks.Find(board.Done.ID); err == nil {
+		wh.Deactivate()
+	}
+
 	for _, cl := range checklists {
 		for _, ci := range cl.CheckItems {
 			c, err := cards.Find(ci.Name)
@@ -480,6 +519,11 @@ func StoreInactiveProjectCard(card trel.Card) error {
 		}
 	}
 
+	// Reactivate the Done webhook.
+	if wh, err := board.Webhooks.Find(board.Done.ID); err == nil {
+		wh.Activate()
+	}
+
 	// Deactivate this card's webhook if it exists.
 	webhook, err := board.Webhooks.Find(card.ID)
 	if err != nil {
@@ -493,6 +537,15 @@ func StoreInactiveProjectCard(card trel.Card) error {
 func SetupInitialWebhooks() {
 	if !HasWebhook(board.Active.ID, board.Webhooks) {
 		hook, err := DefaultWebhook(trelClient, "list", board.Active.ID)
+		if err != nil {
+			logger.Println(err)
+			logger.Fatalln("Unable to create Webhook for Active list")
+		}
+		board.Webhooks = append(board.Webhooks, hook)
+	}
+
+	if !HasWebhook(board.Done.ID, board.Webhooks) {
+		hook, err := DefaultWebhook(trelClient, "list", board.Done.ID)
 		if err != nil {
 			logger.Println(err)
 			logger.Fatalln("Unable to create Webhook for Active list")
@@ -542,6 +595,27 @@ func MakeCallbackURL(scheme, host, typ, id string) string {
 		Path:   fmt.Sprintf("/%s/%s", typ, id),
 	}
 	return u.String()
+}
+
+func FindListCheckItem(l trel.List, ciName string) (*trel.CheckItem, error) {
+	cards, err := l.Cards()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, c := range cards {
+		cls, err := c.Checklists()
+		if err != nil {
+			return nil, err
+		}
+		for _, cl := range cls {
+			if ci, err := cl.CheckItems.Find(ciName); err == nil {
+				return ci, nil
+			}
+		}
+	}
+
+	return nil, trel.NotFoundError{Type: "CheckItem", Identifier: ciName}
 }
 
 func webhooks(w http.ResponseWriter, r *http.Request) {
