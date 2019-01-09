@@ -438,6 +438,19 @@ func SetupActiveProjectCard(card trel.Card) error {
 	}
 
 	for _, cl := range checklists {
+
+		// If every item in the checklist is complete, skip adding them to the board.
+		allComplete := true
+		for _, ci := range cl.CheckItems {
+			if ci.State == "incomplete" {
+				allComplete = false
+				break
+			}
+		}
+		if allComplete {
+			continue
+		}
+
 		for _, ci := range cl.CheckItems {
 			// Either find the card and move it, or make one.
 			c, err := cards.Find(ci.Name)
