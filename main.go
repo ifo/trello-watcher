@@ -366,7 +366,7 @@ func (cic CheckItemChange) Handle() error {
 			// Check to see if the card already exists, and if not, make it.
 			if _, err = board.ToDo.FindCard(ciName); err != nil {
 				// Make the card, because we did not find it anywhere.
-				_, err = board.ToDo.NewCard(ciName, "", "")
+				_, err = board.ToDo.NewCard(ciName, "", "bottom")
 			}
 			return err
 		}
@@ -467,7 +467,7 @@ func SetupActiveProjectCard(card trel.Card) error {
 				if ci.State == "complete" {
 					list = board.Done
 				}
-				_, cardErr := list.NewCard(ci.Name, "", "")
+				_, cardErr := list.NewCard(ci.Name, "", "bottom")
 				if cardErr != nil {
 					return err
 				}
