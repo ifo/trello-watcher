@@ -23,6 +23,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -33,7 +34,6 @@ import (
 	"net/url"
 	"os"
 	"regexp"
-	"strings"
 	"time"
 
 	"github.com/ifo/trel"
@@ -156,9 +156,6 @@ func main() {
 
 func index(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodHead {
-		// Write a file letting us know this route was activated.
-		safePath := strings.Replace(r.URL.Path, "/", "_", -1)
-		defer ioutil.WriteFile(logLoc+"activated-"+safePath, nil, 0644)
 		// A 200 is required to succeed Trello's webhook check.
 		w.WriteHeader(http.StatusOK)
 		return
@@ -237,7 +234,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// We didn't understand the body, so write a file containing the response received for the item.
-	err = RecordResponse(objType, objID, r.Body)
+	err = RecordResponse(objType, objID, bytes.NewReader(body))
 	if err != nil {
 		logger.Println(err)
 		http.Error(w, "", http.StatusInternalServerError)
