@@ -220,14 +220,28 @@ func index(w http.ResponseWriter, r *http.Request) {
 	if objType == "card" {
 		var checkItemChange CheckItemChange
 		if err := json.Unmarshal(body, &checkItemChange); err == nil {
-			err = checkItemChange.Handle()
+			var err error
+			var understood bool
+			switch checkItemChange.Action.Type {
+			case "updateCheckItemStateOnCard":
+				err = checkItemChange.Handle()
+				understood = true
+			case "updateCheckItem":
+				err = checkItemChange.HandleCheckItemRename()
+				understood = true
+			}
+
 			if err != nil {
 				logger.Println(err)
 				http.Error(w, "", http.StatusInternalServerError)
 				return
 			}
-			w.WriteHeader(http.StatusNoContent)
-			return
+
+			if understood {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+
 		} else {
 			logger.Println(err)
 		}
@@ -324,7 +338,9 @@ type CheckItemChange struct {
 		Name string `json:"name"`
 	} `json:"model"`
 	Action struct {
-		Type string `json:"type"` // "updateCheckItemStateOnCard"
+		// "updateCheckItemStateOnCard"
+		// "updateCheckItem"
+		Type string `json:"type"`
 		Data struct {
 			Card struct {
 				ID   string `json:"id"`
@@ -339,6 +355,9 @@ type CheckItemChange struct {
 				ID   string `json:"id"`
 				Name string `json:"name"`
 			} `json:"checklist"`
+			Old struct {
+				Name string `json:"name"`
+			} `json:"old"`
 		} `json:"data"`
 	} `json:"action"`
 }
